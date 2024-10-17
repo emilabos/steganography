@@ -8,8 +8,11 @@ import os
 class StematographyTools:
     @staticmethod
     def convert_string_to_binary(text: str, bits_per_char: int = 8) -> str:
-        binary_text = BitArray(bytes=text.encode('ascii')).bin
-        return binary_text
+        try:
+            binary_text = BitArray(bytes=text.encode('ascii')).bin
+            return binary_text
+        except UnicodeEncodeError:
+            raise Exception(f"The ordinal code for {text} is not in the range 128. Please enter text that only contains 8-bit ascii.")
 
     @staticmethod
     def convert_binary_to_8bit_int(binary_value: str) -> int:
@@ -32,7 +35,7 @@ class StematographyTools:
 
             return binary_rgba_array
         except FileNotFoundError:
-            print(f"{file_path} was not found, check if the path is correct.")
+            raise Exception(f"{file_path} was not found, check if the path is correct.")
 
     @staticmethod
     def encode_LSB(pixel: List[str], char_binary: str) -> List[str]:
@@ -69,15 +72,19 @@ class StematographyTools:
 
     @staticmethod
     def encrypt(text: str, image_path: str) -> None:
-        binary_text = StematographyTools.convert_string_to_binary(text)
-        binary_image_array = StematographyTools.convert_image_to_binary_array(image_path)
-        binary_image_array = StematographyTools.encrypt_binary_into_image(binary_text, binary_image_array)
+        if (len(text) * (8/3) <  os.stat("tree.jpg").st_size):
+            binary_text = StematographyTools.convert_string_to_binary(text)
+            binary_image_array = StematographyTools.convert_image_to_binary_array(image_path)
+            binary_image_array = StematographyTools.encrypt_binary_into_image(binary_text, binary_image_array)
 
-        split_path = os.path.splitext(image_path)
-        file_name = split_path[0]
+            split_path = os.path.splitext(image_path)
+            file_name = split_path[0]
 
-        StematographyTools.create_new_image(binary_image_array, f"{file_name}_encoded.png")
+            StematographyTools.create_new_image(binary_image_array, f"{file_name}_encoded.png")
+        else:
+            raise OverflowError("Text is too large for image!")
 
 
 
 StematographyTools.encrypt(text="password", image_path="tree.jpg")
+
