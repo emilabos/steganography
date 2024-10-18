@@ -72,7 +72,7 @@ class StematographyTools:
 
     @staticmethod
     def encrypt(text: str, image_path: str) -> None:
-        if (len(text) * (8/3) <  os.stat("tree.jpg").st_size):
+        if (len(text) * (8/3) <  os.stat(image_path).st_size):
             binary_text = StematographyTools.convert_string_to_binary(text)
             binary_image_array = StematographyTools.convert_image_to_binary_array(image_path)
             binary_image_array = StematographyTools.encrypt_binary_into_image(binary_text, binary_image_array)
