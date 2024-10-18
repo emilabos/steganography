@@ -13,6 +13,19 @@ class StematographyTools:
             return binary_text
         except UnicodeEncodeError:
             raise Exception(f"The ordinal code for {text} is not in the range 128. Please enter text that only contains 8-bit ascii.")
+        
+    @staticmethod
+    def convert_binary_to_string(binary_text: str, bits_per_char: int = 8) -> str:
+        try:
+            if len(binary_text) % bits_per_char != 0:
+                raise ValueError("The binary text length is not a multiple of the bits per character.")
+
+            byte_chunks = [binary_text[i:i + bits_per_char] for i in range(0, len(binary_text), bits_per_char)]
+            ascii_text = ''.join([chr(int(byte, 2)) for byte in byte_chunks])
+
+            return ascii_text
+        except ValueError as e:
+            raise Exception(f"Error converting binary to string: {e}")
 
     @staticmethod
     def convert_binary_to_8bit_int(binary_value: str) -> int:
@@ -40,8 +53,16 @@ class StematographyTools:
     @staticmethod
     def encode_LSB(pixel: List[str], char_binary: str) -> List[str]:
         for i in range(min(len(pixel), len(char_binary))):
-            pixel[i] = pixel[i][:-1] + char_binary[i]  # replace the LSB of each channel
+            pixel[i] = pixel[i][:-1] + char_binary[i]
         return pixel
+    
+    @staticmethod
+    def decode_LSB(pixel: List[str]) -> str:
+        binary_segment = ""
+        for p in pixel:
+            binary_segment += p[-1] 
+        return binary_segment
+
 
     @staticmethod
     def encrypt_binary_into_image(binary_text: str, image_binary_array: npt.NDArray[np.str_]) -> npt.NDArray[np.str_]:
@@ -72,19 +93,42 @@ class StematographyTools:
 
     @staticmethod
     def encrypt(text: str, image_path: str) -> None:
-        if (len(text) * (8/3) <  os.stat(image_path).st_size):
+        if (len(text) * (8 / 3) < os.stat(image_path).st_size):
             binary_text = StematographyTools.convert_string_to_binary(text)
             binary_image_array = StematographyTools.convert_image_to_binary_array(image_path)
             binary_image_array = StematographyTools.encrypt_binary_into_image(binary_text, binary_image_array)
 
             split_path = os.path.splitext(image_path)
             file_name = split_path[0]
-
+            
+            print(binary_text)
             StematographyTools.create_new_image(binary_image_array, f"{file_name}_encoded.png")
         else:
             raise OverflowError("Text is too large for image!")
+        
+    @staticmethod
+    def decrypt(image_path: str, text_length: int) -> str:
+        binary_text = ""
+        total_bits = text_length * 8 
+        bits_extracted = 0
 
+        image_binary_array = StematographyTools.convert_image_to_binary_array(image_path)
+        for i in range(image_binary_array.shape[1]):  # w
+            for j in range(image_binary_array.shape[0]):  # h
+                if bits_extracted + 3 <= total_bits:
+                    pixel = image_binary_array[j, i]
+                    binary_segment = StematographyTools.decode_LSB(pixel)
+                    binary_text += binary_segment
+                    bits_extracted += 3
+                else:
+                    break
+            if bits_extracted >= total_bits:
+                break
+        
+        print(binary_text[:total_bits])
+        return StematographyTools.convert_binary_to_string(binary_text[:total_bits])  # Limit to exact bit length
 
 
 StematographyTools.encrypt(text="password", image_path="tree.jpg")
+print(StematographyTools.decrypt(image_path="tree_encoded.png", text_length=8))
 
